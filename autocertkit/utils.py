@@ -2801,3 +2801,8 @@ def search_dmidecode(session, keyword):
             found.append(info)
 
     return found
+
+def normalize_test_class_name(n):
+    while n.startswith("autocertkit."):
+        n = n[11:]
+    return n

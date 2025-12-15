@@ -67,19 +67,19 @@ class TestGenerator(object):
         """Function for ensuring that specific prereq conditions are checked and raised before
         execution."""
         pass
-
+    
     def select_test_by_config(self, test_classes):
         """Select test classes to run by config"""
         if "run_classes" not in self.config.keys():
             return test_classes
 
-        classes = self.config["run_classes"].split()
+        raw = self.config["run_classes"]
+        classes = raw.replace(',', ' ').split()
+        requested_class_names = {utils.normalize_test_class_name(c) for c in classes}
         ret = []
-        for cla in classes:
-            for i in test_classes:
-                # i is tuple of ("class name", class obj)
-                if cla == i[0]:
-                    ret.append(i)
+        for name, cls in test_classes:
+            if utils.normalize_test_class_name(name) in requested_class_names:
+                ret.append((name, cls))
         return ret
 
     def filter_test_classes(self, test_classes):
@@ -445,8 +445,13 @@ def enumerate_all_test_classes():
 def print_all_test_classes():
     print("---------- %s ---------" % utils.bold("Test List"))
     classes = enumerate_all_test_classes()
+    dummy_config = {
+        'vlantest': False,
+        'exclude': [],
+        'mode': 'ALL',
+    }
     for test_class_name, test_class in classes:
-        obj = test_class('nonexistent_session', {})
+        obj = test_class('nonexistent_session', dummy_config)
         for test_name in obj.list_tests():
             print("%s.%s" % (test_class_name, test_name))
     sys.exit(0)
