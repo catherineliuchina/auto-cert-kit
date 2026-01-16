@@ -73,13 +73,9 @@ class TestGenerator(object):
         if "run_classes" not in self.config.keys():
             return test_classes
 
-        raw = self.config["run_classes"]
-        classes = raw.replace(',', ' ').split()
-        requested_class_names = {utils.normalize_test_class_name(c) for c in classes}
         ret = []
         for name, cls in test_classes:
-            if utils.normalize_test_class_name(name) in requested_class_names:
-                ret.append((name, cls))
+            ret.append((name, cls))
         return ret
 
     def filter_test_classes(self, test_classes):
