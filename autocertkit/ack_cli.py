@@ -75,20 +75,11 @@ def validate_run_classes(config):
     if "run_classes" not in config:
         return
 
-    from test_generators import enumerate_all_test_classes
-
     all_classes = [name for name, _ in enumerate_all_test_classes()]
-    norm_to_real = {utils.normalize_test_class_name(n): n for n in all_classes}
     raw = config["run_classes"]
     classes = raw.replace(',', ' ').split()
-    missing = []
-    real_classes = []
-    for c in classes:
-        nc = utils.normalize_test_class_name(c)
-        if nc in norm_to_real:
-            real_classes.append(norm_to_real[nc])
-        else:
-            missing.append(c)
+    missing = [c for c in classes if c not in all_classes]
+    real_classes = [c for c in classes if c in all_classes]
 
     if missing:
         msg = (
@@ -225,9 +216,10 @@ def kvp_string_to_rec(string):
     {'a':'b','c':'d','e':'f'}"""
     rec = {}
     for kvp in string.split(','):
-        kvp = kvp.strip()
-        k, v = kvp.split('=', 1)
-        rec[k.strip()] = v.strip()
+        arr = kvp.split('=')
+        if len(arr) > 2:
+            raise Exception("Cannot convert %s to KVP" % string)
+        rec[arr[0]] = arr[1]
     return rec
 
 

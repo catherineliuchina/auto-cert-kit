@@ -67,19 +67,19 @@ class TestGenerator(object):
         """Function for ensuring that specific prereq conditions are checked and raised before
         execution."""
         pass
-    
+
     def select_test_by_config(self, test_classes):
         """Select test classes to run by config"""
         if "run_classes" not in self.config.keys():
             return test_classes
 
-        raw = self.config["run_classes"]
-        classes = raw.replace(',', ' ').split()
-        requested_class_names = {utils.normalize_test_class_name(c) for c in classes}
+        classes = self.config["run_classes"].split()
         ret = []
-        for name, cls in test_classes:
-            if utils.normalize_test_class_name(name) in requested_class_names:
-                ret.append((name, cls))
+        for cla in classes:
+            for i in test_classes:
+                # i is tuple of ("class name", class obj)
+                if cla == i[0]:
+                    ret.append(i)
         return ret
 
     def filter_test_classes(self, test_classes):

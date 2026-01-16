@@ -5,7 +5,7 @@
 <br>
 
 
-Published Jan 2026  
+Published Feb 2026  
 V9.0.0 Edition
 
 <br>
@@ -487,7 +487,7 @@ In the normal case where the test kit runs to completion, we would ask that the 
 
 However, if there is a failure such that the ack-submission package is not created, then we would ask that you submit the following:
 
-- Server Status Report - this can be obtained either by either running the ‘xen-bugtool -y’ command on the   coordinator host, or by using XenCenter (Tools - Get Server Status Report).
+- Server Status Report - this can be obtained by either running the ‘xen-bugtool -y’ command on the coordinator host, or by using XenCenter (Tools - Get Server Status Report).
 - The network.conf and test_run.conf file mentioned in the section above.
 
 <br>
