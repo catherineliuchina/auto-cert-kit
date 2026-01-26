@@ -445,8 +445,13 @@ def enumerate_all_test_classes():
 def print_all_test_classes():
     print("---------- %s ---------" % utils.bold("Test List"))
     classes = enumerate_all_test_classes()
+    dummy_config = {
+        'vlantest': False,
+        'exclude': [],
+        'mode': 'ALL',
+    }
     for test_class_name, test_class in classes:
-        obj = test_class('nonexistent_session', {})
+        obj = test_class('nonexistent_session', dummy_config)
         for test_name in obj.list_tests():
             print("%s.%s" % (test_class_name, test_name))
     sys.exit(0)

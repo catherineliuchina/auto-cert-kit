@@ -5,7 +5,7 @@
 <br>
 
 
-Published Nov 2025  
+Published Feb 2026  
 V9.0.0 Edition
 
 <br>
@@ -487,7 +487,7 @@ In the normal case where the test kit runs to completion, we would ask that the 
 
 However, if there is a failure such that the ack-submission package is not created, then we would ask that you submit the following:
 
-- Server Status Report - this can be obtained either by either running the ‘xen-bugtool –y’ command on the   coordinator host, or by using XenCenter (Tools - Get Server Status Report).
+- Server Status Report - this can be obtained by either running the ‘xen-bugtool -y’ command on the coordinator host, or by using XenCenter (Tools - Get Server Status Report).
 - The network.conf and test_run.conf file mentioned in the section above.
 
 <br>
@@ -602,9 +602,9 @@ We provide the following two methods to customize your re-run:
 
 **Method 1**:
 
-Run a specific category of tests. Your tests are categorized into several groups. You can select to run just one of these groups with an additional argument “–m <TAG\>”. Please refer to the following table for relevant tags.
+Run a specific category of tests. Your tests are categorized into several groups. You can select to run just one of these groups with an additional argument “-m <TAG\>”. Please refer to the following table for relevant tags.
 
-    ./ack_cli.py -n network.conf –m <Tag>
+    ./ack_cli.py -n network.conf -m <Tag>
 
 <table border="1" width="600">  
     <thead bgcolor="#E0E0E0">
@@ -619,7 +619,7 @@ Run a specific category of tests. Your tests are categorized into several groups
         </tr>
         <tr>
             <td> Operation Tests</td>
-            <td>All tests (default)</td>
+            <td>OPS</td>
         </tr>
         <tr>
             <td> CPU Tests</td>
@@ -639,7 +639,7 @@ Run a specific category of tests. Your tests are categorized into several groups
 
 **Method 2**:
 
-Run a specific test class. You can specify any test classes you want to run with an additional argument ‘–o “run_classes=`<TEST CLASS LIST>`”’, where `<TEST CLASS LIST>` is a list of test classes with space as delimiter, and test class is in format of “`<module name>`.`<class name>`”. All module and class names are available in file result.txt.
+Run a specific test class. You can specify any test classes you want to run with an additional argument ‘-o “run_classes=`<TEST CLASS LIST>`”’, where `<TEST CLASS LIST>` is a list of test classes with space as delimiter, and test class is in format of “`<module name>`.`<class name>`”. All module and class names are available in file result.txt.
 
 Examples:
 
@@ -680,4 +680,4 @@ Examples:
 <font size="2">The contents of this kit are subject to change without notice.  
 
 
-Copyright © 2025 Cloud Software Group Inc. This kit allows you to test your products for compatibility with XenServer products.  Actual compatibility results may vary.  The kit is not designed to test for all compatibility scenarios.  Should you use the kit, you must not misrepresent the nature of the results to third parties. TO THE EXTENT PERMITTED BY APPLICABLE LAW, XENSERVER MAKES AND YOU RECEIVE NO WARRANTIES OR CONDITIONS, EXPRESS, IMPLIED, STATUTORY OR OTHERWISE, AND XENSERVER SPECIFICALLY DISCLAIMS WITH RESPECT TO THE KIT ANY CONDITIONS OF QUALITY, AVAILABILITY, RELIABILITY, BUGS OR ERRORS, AND ANY IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, ANY WARRANTY OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE. YOU ASSUME THE RESPONSIBILITY FOR ANY INVESTMENTS MADE OR COSTS INCURRED TO ACHIEVE YOUR INTENDED RESULTS. TO THE EXTENT PERMITTED BY APPLICABLE LAW, XENSERVER SHALL NOT BE LIABLE FOR ANY DIRECT, INDIRECT, SPECIAL, CONSEQUENTIAL, INCIDENTAL, PUNITIVE OR OTHER DAMAGES (INCLUDING, WITHOUT LIMITATION, DAMAGES FOR LOSS OF INCOME, LOSS OF OPPORTUNITY, LOST PROFITS OR ANY OTHER DAMAGES), HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, AND WHETHER OR NOT FOR NEGLIGENCE OR OTHERWISE, AND WHETHER OR NOT XENSERVER HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.</font>
+Copyright © 2026 Cloud Software Group Inc. This kit allows you to test your products for compatibility with XenServer products.  Actual compatibility results may vary.  The kit is not designed to test for all compatibility scenarios.  Should you use the kit, you must not misrepresent the nature of the results to third parties. TO THE EXTENT PERMITTED BY APPLICABLE LAW, XENSERVER MAKES AND YOU RECEIVE NO WARRANTIES OR CONDITIONS, EXPRESS, IMPLIED, STATUTORY OR OTHERWISE, AND XENSERVER SPECIFICALLY DISCLAIMS WITH RESPECT TO THE KIT ANY CONDITIONS OF QUALITY, AVAILABILITY, RELIABILITY, BUGS OR ERRORS, AND ANY IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, ANY WARRANTY OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE. YOU ASSUME THE RESPONSIBILITY FOR ANY INVESTMENTS MADE OR COSTS INCURRED TO ACHIEVE YOUR INTENDED RESULTS. TO THE EXTENT PERMITTED BY APPLICABLE LAW, XENSERVER SHALL NOT BE LIABLE FOR ANY DIRECT, INDIRECT, SPECIAL, CONSEQUENTIAL, INCIDENTAL, PUNITIVE OR OTHER DAMAGES (INCLUDING, WITHOUT LIMITATION, DAMAGES FOR LOSS OF INCOME, LOSS OF OPPORTUNITY, LOST PROFITS OR ANY OTHER DAMAGES), HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, AND WHETHER OR NOT FOR NEGLIGENCE OR OTHERWISE, AND WHETHER OR NOT XENSERVER HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.</font>

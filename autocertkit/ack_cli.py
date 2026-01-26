@@ -51,6 +51,7 @@ import test_report
 import test_runner
 from optparse import OptionParser
 import builtins as exceptions
+import unicodedata
 
 MIN_VLAN = 0
 MAX_VLAN = 4096
@@ -61,8 +62,40 @@ def get_xapi_session(config):
     # Future improvement, implement remote login. For now, just return local
     return utils.get_local_xapi_session()
 
+def _normalize_argv_dashes(argv=None):
+    if argv is None:
+        argv = sys.argv
+    return [
+        ''.join('-' if unicodedata.category(c) == 'Pd' or c == '\u2212' else c for c in arg)
+        for arg in argv
+    ]
+
+def validate_run_classes(config):
+    """Validate run_classes entries early, before running any tests."""
+    if "run_classes" not in config:
+        return
+
+    all_classes = [name for name, _ in enumerate_all_test_classes()]
+    raw = config["run_classes"]
+    classes = raw.replace(',', ' ').split()
+    missing = [c for c in classes if c not in all_classes]
+    real_classes = [c for c in classes if c in all_classes]
+
+    if missing:
+        msg = (
+            "The following values in run_classes do not match any test cases: %s. "
+            "Use 'ack_cli.py -l' to list available tests."
+            % ", ".join(missing)
+        )
+        utils.log.error(msg)
+        sys.exit(1)
+
+    config["run_classes"] = " ".join(real_classes)
 
 def parse_cmd_args():
+    original_argv = list(sys.argv)
+    sys.argv = _normalize_argv_dashes()
+    
     parser = OptionParser(  # NOSONAR
         usage="%prog [options]", version="%prog @KIT_VERSION@")   # NOSONAR
 
@@ -124,6 +157,10 @@ def parse_cmd_args():
 
     config = {}
 
+    if options.list_tests:
+        print_all_test_classes()
+        sys.exit(0)
+
     config['debug'] = options.debug
     config['vlantest'] = options.vlantest
     config['rerun'] = options.rerun
@@ -147,14 +184,13 @@ def parse_cmd_args():
     config['mode'] = options.mode
     config['exclude'] = options.exclude
     utils.log.debug("Test Mode: %s" % options.netconf)
-    if options.list_tests:
-        print_all_test_classes()
 
     if options.optionstr:
         kvp_rec = kvp_string_to_rec(options.optionstr)
         for k, v in kvp_rec.items():
             config[k] = v
 
+    validate_run_classes(config)   
     check_files(config)
 
     return config
