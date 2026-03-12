@@ -5,8 +5,8 @@
 <br>
 
 
-Published Feb 2026  
-V9.0.0 Edition
+Published April 2026  
+V9.0.1 Editionn
 
 <br>
 
@@ -18,10 +18,6 @@ V9.0.0 Edition
 - [Droid VM Prepare](#droid-vm-prepare)
 - [Server Certification Kit Installation](#server-certification-kit-installation)
 - [Setting up the network configuration](#setting-up-the-network-configuration)
-  - [DHCP-based network.conf](#dhcp-based-networkconf)
-  - [Static-IP network.conf](#static-ip-networkconf)
-  - [Optional: SR-IOV configuration](#optional-sr-iov-configuration)
-  - [Optional: VLAN configuration](#optional-vlan-configuration)
 - [Server Certification Kit Operation](#server-certification-kit-operation)
   - [Running the certification tests](#running-the-certification-tests)
   - [Querying the status of the test run](#querying-the-status-of-the-test-run)
@@ -34,6 +30,9 @@ V9.0.0 Edition
   - [My Multicast test network\_tests.MulticastTestClass fails.](#my-multicast-test-network_testsmulticasttestclass-fails)
   - [My SR-IOV test network\_tests.InterHostSRIOVTestClass, IntraHostSRIOVTestClass1, or IntraHostSRIOVTestClass2 fails?](#my-sr-iov-test-network_testsinterhostsriovtestclass-intrahostsriovtestclass1-or-intrahostsriovtestclass2-fails)
   - [Few tests have failed. I don't want to run the full kit all over again. Is there a way to run just these failed tests?](#few-tests-have-failed-i-dont-want-to-run-the-full-kit-all-over-again-is-there-a-way-to-run-just-these-failed-tests)
+- [Appendix: Manual Configuration](#appendix-manual-configuration)
+  - [Manual: Droid VM Prepare](#manual-droid-vm-prepare)
+  - [Manual: Network Configuration](#manual-network-configuration)
 
 <br>
 <br>
@@ -84,117 +83,35 @@ If you would like to join two hosts that are not identical, or of which CPUs can
 
 ## Droid VM Prepare
 
-Create a VM template that the certification kit will use to generate test VMs (referred to as the Droid VM). The following steps show one example of preparing the Droid VM template using XenCenter. You should have access to a Windows desktop/VM with XenCenter installed.  
+The certification kit requires a VM template (called Droid VM) to generate test VMs. Use the `gen_vm_template.py` script to automatically prepare and export this template.
 
-1.To create a VM template, you should create a VM with using e.g. Rocky 8.6 or 8 latest first as below steps.  
+#### Prerequisites
 
-&emsp;&emsp;&emsp;(1) Download Rocky 8.x ISO from official web site URL e.g. <a href=https://download.rockylinux.org/pub/rocky/8/isos/x86_64/Rocky-x86_64-minimal.iso>Rocky-x86_64-minimal.iso</a> and put it onto the same machine of running XenCenter.  
+- A Rocky Linux 8 or Rocky Linux 9 git sVM running on XenServer with:
+  - XenServer VM Tools for Linux installed
+  - Root password set to `xenserver`
+  - Network connectivity to the XenServer host
 
-&emsp;&emsp;&emsp;(2) On the same machine which is running XenCenter, create a share folder and put above Rocky 8 iso file in it, here as example I will save above iso file in "c:\iso" folder on the windows VM, then share this folder and add “everyone” read access.  (Please make sure that your XenServer has network access to this VM which is hosting the shared storage.)  
+#### Using the script
 
-&emsp;&emsp;&emsp;<img src=ack_img/ack13.png>  
+Run the following command on the pool coordinator host (Dom0):
 
-&emsp;&emsp;&emsp;(3) Create new SR with above share folder on XenCenter, open XenCenter and add your host, right click your host then click **New SR.**  
+    cd /opt/xensource/packages/files/auto-cert-kit
+    ./gen_vm_template.py <VM_IP>
 
-&emsp;&emsp;&emsp;<img src=ack_img/ack01.png>  
+Where `<VM_IP>` is the IP address of your Rocky Linux VM.
 
-&emsp;&emsp;&emsp;(4) Select **Windows File Sharing.**  
+The script will:
+1. Copy setup scripts to the VM and execute them
+2. Shut down the VM
+3. Export the VM as `vpx-dlvm.xva`
+4. Distribute the XVA file to all pool hosts
 
-&emsp;&emsp;&emsp;<img src=ack_img/ack02.png>  
+#### Example
 
-&emsp;&emsp;&emsp;(5) Click Next and input the name, then click **Next.**  
-&emsp;&emsp;&emsp;<img src=ack_img/ack03.png>  
+    ./gen_vm_template.py 192.168.1.100
 
-&emsp;&emsp;&emsp;(6) Input the sharing path, username and password, then click **Finish.**  
-
-> **Note:**  
-> In share name should fill in <ins><font style="color: blue">“\\\FQDN of SMB server\share folder”</font></ins> or <ins><font style="color: blue">“\\\IP Address of SMB server\share folder”</font></ins>,  SMB server is the VM on which you created the share folder in step 1.2, here as example, in step 1.2 I have created a share folder on  windows VM(it’s IP 10.70.40.71) in “c:\iso”, this windows VM is the SMB server and share folder is ‘iso’, so in share name I fill in <ins><font style="color: blue">“\\\10.70.40.71\iso”</font></ins>. Please refer to below screenshot. 
-
-
-&emsp;&emsp;&emsp;<img src=ack_img/ack04.png>  
-
-&emsp;&emsp;&emsp;(7) Now you can create new VM in XenCenter, select **Rocky Linux 8.**  
-&emsp;&emsp;&emsp;<img src=ack_img/ack05.png>  
-
-&emsp;&emsp;&emsp;(8) After you created the new SR, you can select the iso file, which you save in the sharing folder.  
-&emsp;&emsp;&emsp;<img src=ack_img/ack06.png>  
-
--	**Memory** = 4GB and **Storage** = 10GB is recommended.  
--	Please set root password = **xenserver**  
-
-2.After Rocky 8 Linux installed successful, please Install latest XenServer-LinuxGuestTools first.  
-
-- Download: <a href="https://www.xenserver.com/downloads">XenServer downloads page.</a>
-- Install: <a href="https://docs.xenserver.com/en-us/citrix-hypervisor/vms/linux.html#install-citrix-vm-tools-for-linux">Install XenServer VM Tools for Linux.</a>  
-
-3.You can get scripts from Server Certification Kit ISO file, which can be used for setting up VM, please refer below example for getting and using those scripts.  
-&emsp;&emsp;&emsp;(1) Download Server Certification Kit ISO file from HCL website and put it on Rocky 8 Linux VM in /root.   
-&emsp;&emsp;&emsp;(2) Mount Server Certification Kit ISO, copy  **xenserver-auto-cert-kit-<version>.el7.noarch.rpm** from IOS/ Packages folder to local disk, please refer below example.  
-
-```
-# mkdir /mnt/iso
-# mount -t iso9660 -o loop /root/xenserver-server-cert-kit-xs9.iso /mnt/iso/
-```
-Here as example, I used Server Certification Kit ISO version 1.3.13, so if you use another version, should replace 1.3.13-1 to your server certification kit version, you can also check the file as below screenshot and then copy this file to “/root”.  
-&emsp;&emsp;&emsp;<img src=ack_img/ack14.png>  
-
-```
-    # cp /mnt/iso/Packages/xenserver-auto-cert-kit-1.3.13-1.el7.noarch.rpm /root
-```  
-&emsp;&emsp;&emsp;(3) Unpack this rpm file. Then can find VM setup scripts in “/root/opt/xensource/packages/files/auto-cert-kit/setup-scripts/”  
-```
-    # rpm2cpio xenserver-auto-cert-kit-1.3.13-1.el7.noarch.rpm | cpio -ivd
-```  
-
-&emsp;&emsp;&emsp;(4) In setup-scripts folder you can find three files as below screenshot shows.
-&emsp;&emsp;&emsp;<img src=ack_img/ack15.png>  
-
- 
-&emsp;&emsp;&emsp;(5) Then create folder “/root/setup-scripts” and copy all above three files to this folder.  
-```
-    # mkdir /root/setup-scripts
-    # cp ./opt/xensource/packages/files/auto-cert-kit/setup-scripts/*.* ./setup-scripts/
-```  
-&emsp;&emsp;&emsp;<img src=ack_img/ack16.png>  
-
-&emsp;&emsp;&emsp;(6) Then can run commands as below to setup VM.  
-```
-    # cd /root/setup-scripts/
-    # sh init-run.sh
-    # reboot
-```  
-&emsp;&emsp;&emsp;(7) After VM rebooting, service status and firewall rule should be as below..   
-&emsp;&emsp;&emsp;<img src=ack_img/ack17.png>  
->**Note:**  
->Scripts works on Rocky 8.6, but you may encounter dependency problems on the newer Rocky 8 version, if you encounter problem as below screenshot.  
-&emsp;&emsp;&emsp;<img src=ack_img/ack18.png>  
-
-&emsp;&emsp;&emsp;(8) We can see that can’t find command “semanage”, so need to install “semanage” by manual as below steps.  
-
-- How to install necessary packages for getting semanage command using the yum command  
-```
-# yum provides /usr/sbin/semanage
-```  
-- From the above sample output, you can see that we need to install policycoreutils-python-utils-2.8-16.1.el8.noarch package to use the semanage command.  
-```
-# yum install policycoreutils-python-utils
-```  
-- Now “semanage” command can be used, you can re-run “init-run.sh” and verify the result.
-
-&emsp;&emsp;&emsp;(9) Extend pm_freeze_timeout for VM
-```
-# echo 300000 > /sys/power/pm_freeze_timeout
-```
-
-4.When above steps done, need to export this VM as “.xva" file.  
-
-- Shut down VM, right click VM on XenCenter and select "Export...".  
-&emsp;&emsp;&emsp;<img src=ack_img/ack07.png>  
-
-- Input the name=vpx-dlvm, and location and select Format as "XVA file".  
-&emsp;&emsp;&emsp;<img src=ack_img/ack08.png>  
-
-For the automated certification kit to run successfully, there are currently the following requirements on your XenServer deployment:  
+> **Note**: For manual preparation steps, see [Appendix: Manual Configuration](#appendix-manual-configuration). 
 
 
 <br>
@@ -215,150 +132,22 @@ Upload "vpx-dlvm.xva” file to the server certification kit home folder on **al
 
 ## Setting up the network configuration
 
-The file `network.conf` tells the certification kit which physical interfaces it is allowed to use for testing, and how those interfaces are connected in your lab. You can refer to `networkconf.example` in /opt/xensource/packages/files/auto-cert-kit/ as a starting point.
+The `network.conf` file tells the certification kit which physical interfaces to test and how they are connected. Use the `gen_netowrk_conf.py` script to generate this file interactively.
 
-The certification kit reads `network.conf` to decide:
-- Which physical interfaces are under certification (each `[ethX]` section is one interface the certification kit may use).
-- Which interfaces are connected to the same Layer 2 network (`network_id`).
+#### Using the script
 
-#### Key rules (common causes of failure)
-- Interfaces connected to the same Layer 2 network must share the same `network_id`.
-- `network_id` is a label used by the certification kit (the integer itself has no meaning beyond grouping).
-- For bonding tests, the certification kit requires at least two interfaces on the same `network_id`.
+Run the following command on the pool coordinator host (Dom0):
 
-#### Example topology
+    cd /opt/xensource/packages/files/auto-cert-kit
+    ./gen_netowrk_conf.py
 
-<img src=ack_img/ack09.png>
+The script will guide you through:
+1. Selecting NICs to test (minimum 2 required for bonding tests)
+2. Choosing DHCP or Static IP mode
+3. Configuring SR-IOV settings (if applicable)
+4. Configuring VLAN IDs (optional)
 
-<br>
-
-In the preceding illustration, eth0 is the management interface for both XenServer hosts (it is required that the management interface be the same on both hosts, else the certification kit will fail to execute properly).
-
-XenServer 1 (XS1) has the hardware that is being certified, so we need to specify in our network config file the devices that can be used for testing, and their properties. In this example, eth0/eth1 and eth2/eth3 are pairs of identical cards.
-
-#### Configuration options
-
-- **`vlan_ids`**: **Set to `0`** (untagged) even though you do not need VLAN testing. See [Optional - VLAN configuration](#optional-vlan-configuration) for VLAN testing.
-- **`vf_driver_name`, `vf_driver_pkg`, `max_vf_num`**: Leave empty if you do not need SR-IOV testing. See [Optional - SR-IOV configuration](#optional-sr-iov-configuration) for SR-IOV testing.
-
-#### DHCP-based network.conf
-If DHCP is available in your lab (recommended), you only need to describe the interfaces and their Layer 2 grouping. Do not add any `static_*` sections.
-
-In most DHCP-based setups, you do not need to make any changes related to the management network.
-
-**Note:** The section names (e.g., `[eth1]`, `[eno3]`) must match the actual network interface names on the pool coordinator host. Run `xe pif-list params=device` to see the interface names used by XenServer.
-
-Minimum example (DHCP)
-
-    [eth1]
-    network_id = 0
-    vlan_ids = 0
-    [eth3]
-    network_id = 0
-    vlan_ids = 0
-
-#### Static-IP network.conf
-If DHCP is not available, you must add `static_*` sections in addition to the `[ethX]` sections.
-
-The certification kit chooses a static IP pool based on:
-- `network_id` (which Layer 2 network the interface is on)
-- VLAN ID (0 for untagged, or a specific VLAN from `vlan_ids`)
-
-Each static pool is defined as an INI section named `static_<NETWORK_ID>_<VLAN_ID>`.
-
-Example:
-
-    [eth1]
-    network_id = 0
-    vlan_ids = 0
-    [eth3]
-    network_id = 0
-    vlan_ids = 0
-
-    [static_0_0]
-    ip_start = 192.168.1.2
-    ip_end = 192.168.1.10
-    netmask = 255.255.255.0
-    gw = 192.168.1.1
-
-If you are using VLANs, define `static_<network_id>_<vlan_id>` for each VLAN that must get static IPs (see [Optional - VLAN configuration](#optional-vlan-configuration)).
-
-If you need to allocate static IPs for the management network while the management interface is not under certification, append a `[static_management]` section.
-
-Example (complete network.conf with static_management):
-
-    [eth1]
-    network_id = 0
-    vlan_ids = 0
-
-    [eth2]
-    network_id = 0
-    vlan_ids = 0
-
-    [static_0_0]
-    ip_start = 192.168.1.2
-    ip_end = 192.168.1.10
-    netmask = 255.255.255.0
-    gw = 192.168.1.1
-
-    [static_management]
-    ip_start = 192.168.0.2
-    ip_end = 192.168.0.10
-    netmask = 255.255.255.0
-    gw = 192.168.0.1
-
-### Optional: SR-IOV configuration
-
-SR-IOV configuration is independent of whether you use DHCP or static IP addressing.
-
-If you want to certify SR-IOV, add the following keys under each interface section in `network.conf`:
-
-- `vf_driver_name`: VF driver module name to be used by the Droid VM. If specified, the certification kit writes the value to `/etc/modules-load.d/<name>.conf` in the Droid VM so the driver loads automatically during boot. Leave empty if the VF driver is already built into the kernel or loads automatically.
-- `vf_driver_pkg`: VF driver RPM package name. The RPM must exist under `/opt/xensource/packages/files/auto-cert-kit/` on the pool coordinator host. If specified, the certification kit uploads and installs the package in the Droid VM. Leave empty if the driver is already installed in the Droid VM.
-- `max_vf_num`: (Optional) Maximum number of VFs to test per PF. Must be greater than 1 if specified. If not specified, the certification kit tests all available VFs.
-
-Example:
-
-    [eth0]
-    network_id = 0
-    vlan_ids = 0
-    vf_driver_name = ixgbevf
-    vf_driver_pkg = kmod-ixgbevf-2.16.1-1.el7.elrepo.x86_64.rpm
-    max_vf_num = 8
-
-> **Note**:
->
-> The Droid VM used by server certification kits is /opt/xensource/packages/files/auto-cert-kit/vpx-dlvm.xva, which is based on upstream Rocky 8.6 or 8 latest. The specified .rpm package must be applicable to the Droid VM in use.
-
-### Optional: VLAN configuration
-
-VLAN configuration is independent of whether you use DHCP or static IP addressing.
-
-> **Note**: VLAN tests are not included in the default test set. To run VLAN tests, add the `-v` argument when executing the certification kit.
-
-If you want to certify VLAN, add `vlan_ids` under each interface section in `network.conf`:
-
-- `vlan_ids`: VLAN ID(s) used for VLAN-related testing. Use a comma to separate multiple VLAN IDs.
-
-If you are using static IP addressing, define `static_<network_id>_<vlan_id>` for each VLAN that must get static IPs.
-
-Example (DHCP):
-
-    [eth0]
-    network_id = 0
-    vlan_ids = 200
-
-Example (Static IP):
-
-    [eth0]
-    network_id = 0
-    vlan_ids = 200
-
-    [static_0_200]
-    ip_start = 192.168.200.2
-    ip_end = 192.168.200.10
-    netmask = 255.255.255.0
-    gw = 192.168.200.1
+> **Note**: For manual configuration details and examples, see [Appendix: Manual Configuration](#appendix-manual-configuration).
 
 <br>
 
@@ -624,6 +413,272 @@ Examples:
 <br>
 
 
+### Manually prepare Droid VM
+
+Create a VM template that the certification kit will use to generate test VMs (referred to as the Droid VM). The following steps show one example of preparing the Droid VM template using XenCenter. You should have access to a Windows desktop/VM with XenCenter installed.  
+
+1.To create a VM template, you should create a VM with using e.g. Rocky 8.6 or 8 latest first as below steps.  
+
+&emsp;&emsp;&emsp;(1) Download Rocky 8.x ISO from official web site URL e.g. <a href=https://download.rockylinux.org/pub/rocky/8/isos/x86_64/Rocky-x86_64-minimal.iso>Rocky-x86_64-minimal.iso</a> and put it onto the same machine of running XenCenter.  
+
+&emsp;&emsp;&emsp;(2) On the same machine which is running XenCenter, create a share folder and put above Rocky 8 iso file in it, here as example I will save above iso file in "c:\iso" folder on the windows VM, then share this folder and add “everyone” read access.  (Please make sure that your XenServer has network access to this VM which is hosting the shared storage.)  
+
+&emsp;&emsp;&emsp;<img src=ack_img/ack13.png>  
+
+&emsp;&emsp;&emsp;(3) Create new SR with above share folder on XenCenter, open XenCenter and add your host, right click your host then click **New SR.**  
+
+&emsp;&emsp;&emsp;<img src=ack_img/ack01.png>  
+
+&emsp;&emsp;&emsp;(4) Select **Windows File Sharing.**  
+
+&emsp;&emsp;&emsp;<img src=ack_img/ack02.png>  
+
+&emsp;&emsp;&emsp;(5) Click Next and input the name, then click **Next.**  
+&emsp;&emsp;&emsp;<img src=ack_img/ack03.png>  
+
+&emsp;&emsp;&emsp;(6) Input the sharing path, username and password, then click **Finish.**  
+
+> **Note:**  
+> In share name should fill in <ins><font style="color: blue">“\\\FQDN of SMB server\share folder”</font></ins> or <ins><font style="color: blue">“\\\IP Address of SMB server\share folder”</font></ins>,  SMB server is the VM on which you created the share folder in step 1.2, here as example, in step 1.2 I have created a share folder on  windows VM(it’s IP 10.70.40.71) in “c:\iso”, this windows VM is the SMB server and share folder is ‘iso’, so in share name I fill in <ins><font style="color: blue">“\\\10.70.40.71\iso”</font></ins>. Please refer to below screenshot. 
+
+
+&emsp;&emsp;&emsp;<img src=ack_img/ack04.png>  
+
+&emsp;&emsp;&emsp;(7) Now you can create new VM in XenCenter, select **Rocky Linux 8.**  
+&emsp;&emsp;&emsp;<img src=ack_img/ack05.png>  
+
+&emsp;&emsp;&emsp;(8) After you created the new SR, you can select the iso file, which you save in the sharing folder.  
+&emsp;&emsp;&emsp;<img src=ack_img/ack06.png>  
+
+-	**Memory** = 4GB and **Storage** = 10GB is recommended.  
+-	Please set root password = **xenserver**  
+
+2.After Rocky 8 Linux installed successful, please Install latest XenServer-LinuxGuestTools first.  
+
+- Download: <a href="https://www.xenserver.com/downloads">XenServer downloads page.</a>
+- Install: <a href="https://docs.xenserver.com/en-us/citrix-hypervisor/vms/linux.html#install-citrix-vm-tools-for-linux">Install XenServer VM Tools for Linux.</a>  
+
+3.You can get scripts from Server Certification Kit ISO file, which can be used for setting up VM, please refer below example for getting and using those scripts.  
+&emsp;&emsp;&emsp;(1) Download Server Certification Kit ISO file from HCL website and put it on Rocky 8 Linux VM in /root.   
+&emsp;&emsp;&emsp;(2) Mount Server Certification Kit ISO, copy  **xenserver-auto-cert-kit-<version>.el7.noarch.rpm** from IOS/ Packages folder to local disk, please refer below example.  
+
+```
+# mkdir /mnt/iso
+# mount -t iso9660 -o loop /root/xenserver-server-cert-kit-xs9.iso /mnt/iso/
+```
+Here as example, I used Server Certification Kit ISO version 1.3.13, so if you use another version, should replace 1.3.13-1 to your server certification kit version, you can also check the file as below screenshot and then copy this file to “/root”.  
+&emsp;&emsp;&emsp;<img src=ack_img/ack14.png>  
+
+```
+    # cp /mnt/iso/Packages/xenserver-auto-cert-kit-1.3.13-1.el7.noarch.rpm /root
+```  
+&emsp;&emsp;&emsp;(3) Unpack this rpm file. Then can find VM setup scripts in “/root/opt/xensource/packages/files/auto-cert-kit/setup-scripts/”  
+```
+    # rpm2cpio xenserver-auto-cert-kit-1.3.13-1.el7.noarch.rpm | cpio -ivd
+```  
+
+&emsp;&emsp;&emsp;(4) In setup-scripts folder you can find three files as below screenshot shows.
+&emsp;&emsp;&emsp;<img src=ack_img/ack15.png>  
+
+ 
+&emsp;&emsp;&emsp;(5) Then create folder “/root/setup-scripts” and copy all above three files to this folder.  
+```
+    # mkdir /root/setup-scripts
+    # cp ./opt/xensource/packages/files/auto-cert-kit/setup-scripts/*.* ./setup-scripts/
+```  
+&emsp;&emsp;&emsp;<img src=ack_img/ack16.png>  
+
+&emsp;&emsp;&emsp;(6) Then can run commands as below to setup VM.  
+```
+    # cd /root/setup-scripts/
+    # sh init-run.sh
+    # reboot
+```  
+&emsp;&emsp;&emsp;(7) After VM rebooting, service status and firewall rule should be as below..   
+&emsp;&emsp;&emsp;<img src=ack_img/ack17.png>  
+>**Note:**  
+>Scripts works on Rocky 8.6, but you may encounter dependency problems on the newer Rocky 8 version, if you encounter problem as below screenshot.  
+&emsp;&emsp;&emsp;<img src=ack_img/ack18.png>  
+
+&emsp;&emsp;&emsp;(8) We can see that can’t find command “semanage”, so need to install “semanage” by manual as below steps.  
+
+- How to install necessary packages for getting semanage command using the yum command  
+```
+# yum provides /usr/sbin/semanage
+```  
+- From the above sample output, you can see that we need to install policycoreutils-python-utils-2.8-16.1.el8.noarch package to use the semanage command.  
+```
+# yum install policycoreutils-python-utils
+```  
+- Now “semanage” command can be used, you can re-run “init-run.sh” and verify the result.
+
+&emsp;&emsp;&emsp;(9) Extend pm_freeze_timeout for VM
+```
+# echo 300000 > /sys/power/pm_freeze_timeout
+```
+
+4.When above steps done, need to export this VM as “.xva" file.  
+
+- Shut down VM, right click VM on XenCenter and select "Export...".  
+&emsp;&emsp;&emsp;<img src=ack_img/ack07.png>  
+
+- Input the name=vpx-dlvm, and location and select Format as "XVA file".  
+&emsp;&emsp;&emsp;<img src=ack_img/ack08.png>  
+
+For the automated certification kit to run successfully, there are currently the following requirements on your XenServer deployment:  
+
+
+<br>
+
+
+### Manually setting up the network configuration
+
+The file `network.conf` tells the certification kit which physical interfaces it is allowed to use for testing, and how those interfaces are connected in your lab. You can refer to `networkconf.example` in /opt/xensource/packages/files/auto-cert-kit/ as a starting point.
+
+The certification kit reads `network.conf` to decide:
+- Which physical interfaces are under certification (each `[ethX]` section is one interface the certification kit may use).
+- Which interfaces are connected to the same Layer 2 network (`network_id`).
+
+#### Key rules (common causes of failure)
+- Interfaces connected to the same Layer 2 network must share the same `network_id`.
+- `network_id` is a label used by the certification kit (the integer itself has no meaning beyond grouping).
+- For bonding tests, the certification kit requires at least two interfaces on the same `network_id`.
+
+#### Example topology
+
+<img src=ack_img/ack09.png>
+
+<br>
+
+In the preceding illustration, eth0 is the management interface for both XenServer hosts (it is required that the management interface be the same on both hosts, else the certification kit will fail to execute properly).
+
+XenServer 1 (XS1) has the hardware that is being certified, so we need to specify in our network config file the devices that can be used for testing, and their properties. In this example, eth0/eth1 and eth2/eth3 are pairs of identical cards.
+
+#### Configuration options
+
+- **`vlan_ids`**: **Set to `0`** (untagged) even though you do not need VLAN testing. See [Optional - VLAN configuration](#optional-vlan-configuration) for VLAN testing.
+- **`vf_driver_name`, `vf_driver_pkg`, `max_vf_num`**: Leave empty if you do not need SR-IOV testing. See [Optional - SR-IOV configuration](#optional-sr-iov-configuration) for SR-IOV testing.
+
+#### DHCP-based network.conf
+If DHCP is available in your lab (recommended), you only need to describe the interfaces and their Layer 2 grouping. Do not add any `static_*` sections.
+
+In most DHCP-based setups, you do not need to make any changes related to the management network.
+
+**Note:** The section names (e.g., `[eth1]`, `[eno3]`) must match the actual network interface names on the pool coordinator host. Run `xe pif-list params=device` to see the interface names used by XenServer.
+
+Minimum example (DHCP)
+
+    [eth1]
+    network_id = 0
+    vlan_ids = 0
+    [eth3]
+    network_id = 0
+    vlan_ids = 0
+
+#### Static-IP network.conf
+If DHCP is not available, you must add `static_*` sections in addition to the `[ethX]` sections.
+
+The certification kit chooses a static IP pool based on:
+- `network_id` (which Layer 2 network the interface is on)
+- VLAN ID (0 for untagged, or a specific VLAN from `vlan_ids`)
+
+Each static pool is defined as an INI section named `static_<NETWORK_ID>_<VLAN_ID>`.
+
+Example:
+
+    [eth1]
+    network_id = 0
+    vlan_ids = 0
+    [eth3]
+    network_id = 0
+    vlan_ids = 0
+
+    [static_0_0]
+    ip_start = 192.168.1.2
+    ip_end = 192.168.1.10
+    netmask = 255.255.255.0
+    gw = 192.168.1.1
+
+If you are using VLANs, define `static_<network_id>_<vlan_id>` for each VLAN that must get static IPs (see [Optional - VLAN configuration](#optional-vlan-configuration)).
+
+If you need to allocate static IPs for the management network while the management interface is not under certification, append a `[static_management]` section.
+
+Example (complete network.conf with static_management):
+
+    [eth1]
+    network_id = 0
+    vlan_ids = 0
+
+    [eth2]
+    network_id = 0
+    vlan_ids = 0
+
+    [static_0_0]
+    ip_start = 192.168.1.2
+    ip_end = 192.168.1.10
+    netmask = 255.255.255.0
+    gw = 192.168.1.1
+
+    [static_management]
+    ip_start = 192.168.0.2
+    ip_end = 192.168.0.10
+    netmask = 255.255.255.0
+    gw = 192.168.0.1
+
+### Optional: SR-IOV configuration
+
+SR-IOV configuration is independent of whether you use DHCP or static IP addressing.
+
+If you want to certify SR-IOV, add the following keys under each interface section in `network.conf`:
+
+- `vf_driver_name`: VF driver module name to be used by the Droid VM. If specified, the certification kit writes the value to `/etc/modules-load.d/<name>.conf` in the Droid VM so the driver loads automatically during boot. Leave empty if the VF driver is already built into the kernel or loads automatically.
+- `vf_driver_pkg`: VF driver RPM package name. The RPM must exist under `/opt/xensource/packages/files/auto-cert-kit/` on the pool coordinator host. If specified, the certification kit uploads and installs the package in the Droid VM. Leave empty if the driver is already installed in the Droid VM.
+- `max_vf_num`: (Optional) Maximum number of VFs to test per PF. Must be greater than 1 if specified. If not specified, the certification kit tests all available VFs.
+
+Example:
+
+    [eth0]
+    network_id = 0
+    vlan_ids = 0
+    vf_driver_name = ixgbevf
+    vf_driver_pkg = kmod-ixgbevf-2.16.1-1.el7.elrepo.x86_64.rpm
+    max_vf_num = 8
+
+> **Note**:
+>
+> The Droid VM used by server certification kits is /opt/xensource/packages/files/auto-cert-kit/vpx-dlvm.xva, which is based on upstream Rocky 8.6 or 8 latest. The specified .rpm package must be applicable to the Droid VM in use.
+
+### Optional: VLAN configuration
+
+VLAN configuration is independent of whether you use DHCP or static IP addressing.
+
+> **Note**: VLAN tests are not included in the default test set. To run VLAN tests, add the `-v` argument when executing the certification kit.
+
+If you want to certify VLAN, add `vlan_ids` under each interface section in `network.conf`:
+
+- `vlan_ids`: VLAN ID(s) used for VLAN-related testing. Use a comma to separate multiple VLAN IDs.
+
+If you are using static IP addressing, define `static_<network_id>_<vlan_id>` for each VLAN that must get static IPs.
+
+Example (DHCP):
+
+    [eth0]
+    network_id = 0
+    vlan_ids = 200
+
+Example (Static IP):
+
+    [eth0]
+    network_id = 0
+    vlan_ids = 200
+
+    [static_0_200]
+    ip_start = 192.168.200.2
+    ip_end = 192.168.200.10
+    netmask = 255.255.255.0
+    gw = 192.168.200.1
+
+<br>
 #### Notice and Disclaimer <!-- omit in toc -->
 
 <font size="2">The contents of this kit are subject to change without notice.  
