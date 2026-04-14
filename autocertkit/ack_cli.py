@@ -280,7 +280,10 @@ def parse_section_iface(cp, rec, section):
         vlan_ids = cp.get(section, 'vlan_ids')
     utils.log.debug("VLAN IDs: '%s'" % vlan_ids)
     try:
-        vlan_ids = [int(id.strip()) for id in vlan_ids.split(',')]
+        if vlan_ids.strip():
+            vlan_ids = [int(id.strip()) for id in vlan_ids.split(',')]
+        else:
+            vlan_ids = []
     except:
         raise utils.InvalidArgument('VLAN IDs for %s' % section, vlan_ids,
                                     'should be integer with comma as delimiter if multiple')
