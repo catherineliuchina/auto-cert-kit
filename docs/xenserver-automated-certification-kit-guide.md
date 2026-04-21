@@ -5,7 +5,7 @@
 <br>
 
 
-Published April 2026  
+Published June 2026  
 V9.0.1 Edition
 
 <br>
@@ -101,10 +101,11 @@ The certification kit requires a VM template (called Droid VM) to generate test 
 
 #### Prerequisites
 
-- A Rocky Linux 8 or Rocky Linux 9 VM running on XenServer with:
+- A Rocky Linux 8.10 or 8 latest VM running on XenServer with:
   - XenServer VM Tools for Linux installed
   - Root password set to `xenserver`
   - Network connectivity to the XenServer host
+  - No ISO mounted in the VM
 
 #### Using the script
 

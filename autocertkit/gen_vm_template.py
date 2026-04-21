@@ -132,7 +132,10 @@ def main():
     vm_pass = DEFAULT_PASSWORD
 
     # Step 1: Pre-checks
-    print("[1/6] Pre-checks")
+    print("[1/7] Pre-checks")
+    if os.path.exists(XVA_PATH):
+        print("ERROR: %s already exists. Please remove it first." % XVA_PATH)
+        sys.exit(1)
     if not os.path.isdir(SETUP_SCRIPTS_SRC):
         raise RuntimeError("Cannot find setup scripts dir: %s" % SETUP_SCRIPTS_SRC)
 
@@ -141,38 +144,110 @@ def main():
     except RuntimeError as e:
         print("\n%s" % str(e))
         print("Troubleshooting tips:")
-        print("  1. Check if VM is powered on: xe vm-list | grep <vm_name>")
+        print("  1. Check if VM is powered on: xe vm-list")
         print("  2. Verify correct IP address for the VM")
         print("  3. Check network/firewall on VM host")
         print("  4. Make sure VM has network configured (DHCP or static IP)")
         sys.exit(1)
 
+    result = ssh_command(vm_ip, DEFAULT_USERNAME, vm_pass,
+                         "rpm -q xe-guest-utilities xe-guest-utilities-xenstore",
+                         attempts=1, timeout=60)
+    if result.get('returncode') != 0:
+        print("ERROR: VM prerequisite RPMs are missing: xe-guest-utilities and/or xe-guest-utilities-xenstore")
+        if result.get('stdout'):
+            print("stdout: %s" % result.get('stdout'))
+        if result.get('stderr'):
+            print("stderr: %s" % result.get('stderr'))
+        sys.exit(1)
+
     # Step 2: Copy setup-scripts into VM
-    print("[2/6] Copy setup-scripts into VM")
+    print("[2/7] Copy setup-scripts into VM")
     channel = SecureChannel(vm_ip, DEFAULT_USERNAME, vm_pass, timeout=300)
     channel.run_cmd("rm -rf %s" % REMOTE_SETUP_DIR)
     scp_cmd = channel._wrap_cmd(
         "%s -r %s %s@%s:/root/" % (SCP, SETUP_SCRIPTS_SRC, DEFAULT_USERNAME, vm_ip)
     )
-    result = make_local_call(scp_cmd, shell=True, timeout=300)
+    result = make_local_call(scp_cmd, shell=True, timeout=1800)
     if result['returncode'] != 0:
         print("Error copying setup scripts: %s" % result['stderr'])
         sys.exit(1)
 
     # Step 3: Run Rocky init-run.sh inside VM
-    print("[3/6] Run Rocky init-run.sh inside VM")
-    channel.run_cmd("command -v semanage || dnf install -y policycoreutils-python-utils")
-    channel.run_cmd("chmod +x %s/init-run.sh && bash %s/init-run.sh" % (REMOTE_SETUP_DIR, REMOTE_SETUP_DIR))
-    print("init-run.sh completed")
-
+    print("[3/7] Run Rocky init-run.sh inside VM")
+    # Use longer timeout for init-run.sh (dnf update can take 10-15 minutes)
+    channel = SecureChannel(vm_ip, DEFAULT_USERNAME, vm_pass, timeout=1800)
+    channel.run_cmd_ext("command -v semanage || dnf install -y policycoreutils-python-utils")
+    # Convert CRLF to LF in case scripts were edited on Windows
+    channel.run_cmd_ext("sed -i 's/\\r$//' %s/*.sh" % REMOTE_SETUP_DIR)
+    result = channel.run_cmd_ext("chmod +x %s/init-run.sh && bash %s/init-run.sh" % (REMOTE_SETUP_DIR, REMOTE_SETUP_DIR))
+    if result.get('returncode', 1) == 0:
+        print("init-run.sh completed successfully")
+    else:
+        print("init-run.sh finished with exit code: %s" % result.get('returncode'))
+        if result.get('stderr'):
+            print("stderr: %s" % result.get('stderr'))
     # Step 4: Reboot VM and wait for SSH
-    print("[4/6] Reboot VM and wait for SSH back")
-    channel.run_cmd("reboot")
+    print("[4/7] Reboot VM and wait for SSH back")
+    # Use nohup + background to let SSH exit cleanly before reboot kicks in
+    channel.run_cmd("nohup sh -c 'sleep 2; reboot' >/dev/null 2>&1 &")
     time.sleep(10)
     wait_for_ssh(vm_ip, vm_pass)
 
-    # Step 5: Find VM UUID
-    print("[5/6] Find VM UUID")
+    # Step 5: Verify VM changes after reboot
+    print("[5/7] Verify VM configuration after reboot")
+    channel = SecureChannel(vm_ip, DEFAULT_USERNAME, vm_pass, timeout=300)
+
+    # Check startup-ip service
+    result = channel.run_cmd_ext("systemctl is-enabled startup-ip.service")
+    print("  startup-ip.service enabled: %s" % ("yes" if result.get('returncode') == 0 else "no"))
+    if result.get('returncode') != 0:
+        print("ERROR: startup-ip.service is not enabled")
+        sys.exit(1)
+
+    # Check firewall state
+    result = channel.run_cmd_ext("firewall-cmd --state")
+    fw_state = result.get('stdout', '').strip()
+    print("  firewall state: %s" % fw_state)
+    if fw_state != "running":
+        print("ERROR: firewall is not running")
+        sys.exit(1)
+
+    # Check firewall ports
+    result = channel.run_cmd_ext("firewall-cmd --list-ports")
+    ports = result.get('stdout', '').strip()
+    print("  firewall ports: %s" % ports)
+    required_ports = ["4/tcp", "4/udp", "5001/tcp", "5001/udp"]
+    for port in required_ports:
+        if port not in ports:
+            print("ERROR: Required firewall port %s is missing" % port)
+            sys.exit(1)
+
+    # Check required packages
+    result = channel.run_cmd_ext("rpm -q perl tcpdump")
+    print("  packages installed: %s" % ("yes" if result.get('returncode') == 0 else "no"))
+    if result.get('returncode') != 0:
+        print("ERROR: Required packages (perl, tcpdump) are not installed")
+        sys.exit(1)
+
+    # Check perl modules
+    result = channel.run_cmd_ext("perl -e 'use List::MoreUtils; use Readonly; print \"perl modules OK\"'")
+    print("  perl modules (List::MoreUtils, Readonly): %s" % ("yes" if result.get('returncode') == 0 else "no"))
+    if result.get('returncode') != 0:
+        print("ERROR: Required perl modules (List::MoreUtils, Readonly) are not installed")
+        sys.exit(1)
+
+    # Set pm_freeze_timeout (runtime param, doesn't survive reboot)
+    channel.run_cmd_ext("echo 300000 > /sys/power/pm_freeze_timeout")
+    result = channel.run_cmd_ext("cat /sys/power/pm_freeze_timeout")
+    pm_timeout = result.get('stdout', '').strip()
+    print("  pm_freeze_timeout: %s" % pm_timeout)
+    if pm_timeout != "300000":
+        print("ERROR: pm_freeze_timeout is not 300000 (got: %s)" % pm_timeout)
+        sys.exit(1)
+
+    # Step 6: Find VM UUID
+    print("[6/7] Find VM UUID")
     vm_uuid = None
 
     # Try to get VM UUID
@@ -191,8 +266,8 @@ def main():
         sys.exit(1)
     print("VM UUID: %s" % vm_uuid)
 
-    # Step 6: Shutdown and export VM
-    print("[6/6] Shutdown and export VM as %s" % XVA_NAME)
+    # Step 7: Shutdown and export VM
+    print("[7/7] Shutdown and export VM as %s" % XVA_NAME)
     result = make_local_call(["xe", "vm-param-get", "uuid=%s" % vm_uuid, "param-name=name-label"], logging=False)
     vm_name = result['stdout'].strip() if result['returncode'] == 0 else "unknown"
     print("Shutting down VM %s (%s)..." % (vm_name, vm_uuid))
