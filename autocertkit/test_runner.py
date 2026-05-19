@@ -209,6 +209,7 @@ def run_tests_from_file(test_file):
         config['device_config'] = next_test_class.get_device_config()
         config['test_method'] = next_test_method
         config['test_class'] = next_test_class
+        config['test_file'] = test_file
 
         log.debug("About to run test: '%s'" % method_name)
 

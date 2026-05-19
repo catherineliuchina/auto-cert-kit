@@ -36,6 +36,7 @@ import os.path
 import sys
 import math
 import traceback
+from xml.dom import minidom
 
 
 class FixedOffloadException(Exception):
@@ -1208,6 +1209,21 @@ class InterHostSRIOVTestClass(IperfTestClass):
             raise TestCaseError(
                 'Error: SR-IOV test failed. SR-IOV capability is not available')
 
+    def _update_test_run_vfs(self):
+        test_file = get_value(self.config, 'test_file')
+        test_class = get_value(self.config, 'test_class')
+        if not test_file or not test_class:
+            return
+        dom = minidom.parse(test_file)
+        dev_nodes = dom.getElementsByTagName('device')
+        for dev_node in dev_nodes:
+            if dev_node.getAttribute('udid') == str(test_class.parent.udid):
+                dev_node.setAttribute('vfs', str(self.vf_num))
+                fh = open(test_file, 'w')
+                fh.write(dom.toxml())
+                fh.close()
+                return
+
     def _enable_vf(self, session, tried=False):
         master = get_pool_master(session)
         device = self.config['device_config']['Kernel_name']
@@ -1237,6 +1253,7 @@ class InterHostSRIOVTestClass(IperfTestClass):
         if self.vf_num <= 0:
             raise TestCaseError(
                 'Error: SR-IOV test failed. No VF available after enabling')
+        self._update_test_run_vfs()
 
         net_ref = get_test_sriov_network(session, network_label)
 
