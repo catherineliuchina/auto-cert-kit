@@ -149,6 +149,22 @@ class TestGenerator(object):
         # Set the device type
         device_node.setAttribute('tag', self.TAG)
 
+        # Add SR-IOV VF count if the device supports SR-IOV
+        if device_config and 'Kernel_name' in device_config:
+            device_name = device_config['Kernel_name']
+            if utils.has_sriov_cap(self.session, device_name):
+                try:
+                    master_ref = utils.get_pool_master(self.session)
+                    pifs_ref = utils.get_pifs_by_device(self.session, device_name, [master_ref])
+                    if pifs_ref:
+                        sriov_physical_pifs = self.session.xenapi.PIF.get_sriov_physical_PIF_of(pifs_ref[0])
+                        if sriov_physical_pifs:
+                            net_sriov_ref = sriov_physical_pifs[0]
+                            vf_num = self.session.xenapi.network_sriov.get_remaining_capacity(net_sriov_ref)
+                            device_node.setAttribute('vfs', str(vf_num))
+                except Exception as e:
+                    utils.log.debug("Failed to get VF count for device %s: %s" % (device_name, str(e)))
+
         cts_node = doc.createElement('certification_tests')
         device_node.appendChild(cts_node)
 

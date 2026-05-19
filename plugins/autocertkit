@@ -1012,8 +1012,34 @@ def get_local_storage_devices(session, args):
 
                 # Just check the path is still there.
                 if os.path.exists(driver_sym):
-                    device['driver'] = os.path.basename(
-                        os.readlink(driver_sym))
+                    driver_name = os.path.basename(os.readlink(driver_sym))
+                    device['driver'] = driver_name
+
+                    # Get driver version from /sys/module/<driver_name>/version
+                    driver_version_path = "/sys/module/%s/version" % driver_name
+                    if os.path.exists(driver_version_path):
+                        try:
+                            with open(driver_version_path, 'r') as f:
+                                device['driver_version'] = f.read().strip()
+                        except Exception as e:
+                            log.debug("Failed to read driver version: %s" % str(e))
+
+                    # Get firmware version from device sysfs
+                    # Try common firmware version paths
+                    firmware_paths = [
+                        os.path.join(driver_root_dir, 'firmware_version'),
+                        os.path.join(driver_root_dir, 'fw_version'),
+                        os.path.join(driver_root_dir, 'fw_rev'),
+                    ]
+                    for fw_path in firmware_paths:
+                        if os.path.exists(fw_path):
+                            try:
+                                with open(fw_path, 'r') as f:
+                                    device['firmware_version'] = f.read().strip()
+                                    break
+                            except Exception as e:
+                                log.debug("Failed to read firmware from %s: %s" % (fw_path, str(e)))
+
             if not device in storage_devices:
                 storage_devices.append(device)
 
