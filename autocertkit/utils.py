@@ -2338,13 +2338,15 @@ def wait_for_dom0_device_ip(session, vm_ref, device, static_manager):
 
 
 def get_vm_interface(session, host, vm_ref, mip):
-    """Use ip command to get all interface (eth*) information"""
+    """Use ip command to get all interface (eth*/en*) information"""
 
     # e.g. eth0: [eth0, ec:f4:bb:ce:91:9c, 10.62.114.80]
+    # or enp0s3: [enp0s3, ec:f4:bb:ce:91:9c, 10.62.114.80]
     ifs = {}
 
-    # cmd output: "eth0: ec:f4:bb:ce:91:9c"
-    cmd = """ip -o link | awk '{if($2 ~ /^eth/) print $2,$17}'"""
+    # cmd output: "eth0: ec:f4:bb:ce:91:9c" or "enp0s3: ec:f4:bb:ce:91:9c"
+    # Support both traditional eth* naming and predictable naming (en*, ens*, enp*, enx*)
+    cmd = """ip -o link | awk '{if($2 ~ /^e/) print $2,$17}'"""
     res = ssh_command(mip, 'root', DEFAULT_PASSWORD, cmd)
     mac_re = re.compile(r"(?P<device>.*): (?P<mac>.*)")     # NOSONAR
     for line in res['stdout'].strip().split('\n'):
@@ -2353,8 +2355,8 @@ def get_vm_interface(session, host, vm_ref, mip):
             device, mac = match.groups()
             ifs[device] = [device, mac, '']
 
-    # cmd output: "eth0 10.62.114.80/21"
-    cmd = """ip -o -f inet addr | awk '{if($2 ~ /^eth/) print $2,$4}'"""
+    # cmd output: "eth0 10.62.114.80/21" or "enp0s3 10.62.114.80/21"
+    cmd = """ip -o -f inet addr | awk '{if($2 ~ /^e/) print $2,$4}'"""
     res = ssh_command(mip, 'root', DEFAULT_PASSWORD, cmd)
     ip_re = re.compile(r"(?P<device>.*) (?P<ip>.*)")    # NOSONAR
     for line in res['stdout'].strip().split('\n'):
