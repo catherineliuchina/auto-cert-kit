@@ -546,6 +546,21 @@ class BondingTestClass(testbase.NetworkTestClass):
     required_config = ['device_config']
     num_ips_required = 2
 
+    def _cleanup_bonds(self, session):
+        """Clean up any existing bonds with FOR_CLEANUP tag before running the test"""
+        log.debug("Cleaning up existing bonds with FOR_CLEANUP tag before bond test...")
+        bonds = session.xenapi.Bond.get_all()
+        for bond in bonds:
+            try:
+                other_config = session.xenapi.Bond.get_other_config(bond)
+                if utils.FOR_CLEANUP in other_config:
+                    log.debug("Destroying bond with FOR_CLEANUP tag: %s" % bond)
+                    session.xenapi.Bond.destroy(bond)
+                else:
+                    log.debug("Skipping bond without FOR_CLEANUP tag: %s" % bond)
+            except Exception as e:
+                log.debug("Failed to check/destroy bond %s: %s" % (bond, str(e)))
+
     def _setup_network(self, session, mode):
         """Util function for creating a pool-wide network, 
             NIC bond of specified mode on each host"""
@@ -594,6 +609,9 @@ class BondingTestClass(testbase.NetworkTestClass):
             configuring the test VMs, and testing for an active 
             network connection while the NIC bond is degraded.
             Returns failure if any packet loss."""
+        # Clean up any existing bonds before running the test
+        self._cleanup_bonds(session)
+
         net_refs = self._setup_network(session, mode)
         vm1_ref, vm2_ref = self._setup_vms(session, net_refs)
 
