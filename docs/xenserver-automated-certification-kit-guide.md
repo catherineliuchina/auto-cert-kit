@@ -101,7 +101,7 @@ The certification kit requires a VM template (called Droid VM) to generate test 
 
 #### Prerequisites
 
-- A Rocky Linux 8.10 or 8 latest VM running on XenServer with:
+- A Rocky Linux 8 or Rocky Linux 9 VM running on XenServer with:
   - XenServer VM Tools for Linux installed
   - Root password set to `xenserver`
   - Network connectivity to the XenServer host
@@ -125,7 +125,11 @@ The script will:
 
     ./gen_vm_template.py 192.168.1.100
 
-> **Note**: For manual preparation steps, see [Appendix: Manual Configuration](#appendix-manual-configuration). 
+ &emsp;&emsp;&emsp;<img src=ack_img/ack26.png>
+
+> **Note**: 
+>
+> For manual preparation steps, see [Appendix: Manual Configuration](#appendix-manual-configuration). 
 
 #### Distribute `vpx-dlvm.xva` to all slave hosts
 
@@ -159,7 +163,11 @@ The script will guide you through:
 3. Configuring SR-IOV settings (if applicable)
 4. Configuring VLAN IDs (optional)
 
-> **Note**: For manual configuration details and examples, see [Appendix: Manual Configuration](#appendix-manual-configuration).
+&emsp;&emsp;&emsp;<img src=ack_img/ack25.png>
+
+> **Note**:
+>
+> For manual configuration details and examples, see [Appendix: Manual Configuration](#appendix-manual-configuration).
 
 <br>
 
@@ -476,17 +484,17 @@ Create a VM template that the certification kit will use to generate test VMs (r
 
 ```
 # mkdir /mnt/iso
-# mount -t iso9660 -o loop /root/xenserver-server-cert-kit-xs9.iso /mnt/iso/
+# mount -t iso9660 -o loop /root/xenserver-server-cert-kit-9.0.0.iso /mnt/iso/
 ```
-Here as example, I used Server Certification Kit ISO version 1.3.13, so if you use another version, should replace 1.3.13-1 to your server certification kit version, you can also check the file as below screenshot and then copy this file to “/root”.  
+Here as example, I used Server Certification Kit ISO version 9.0.0, so if you use another version, should replace 9.0.0 to your server certification kit version, you can also check the file as below screenshot and then copy this file to “/root”.  
 &emsp;&emsp;&emsp;<img src=ack_img/ack14.png>  
 
 ```
-    # cp /mnt/iso/Packages/xenserver-auto-cert-kit-1.3.13-1.el7.noarch.rpm /root
+    # cp /mnt/iso/Packages/auto-cert-kit-9.0.1-2.xs9.noarch.rpm /root
 ```  
 &emsp;&emsp;&emsp;(3) Unpack this rpm file. Then can find VM setup scripts in “/root/opt/xensource/packages/files/auto-cert-kit/setup-scripts/”  
 ```
-    # rpm2cpio xenserver-auto-cert-kit-1.3.13-1.el7.noarch.rpm | cpio -ivd
+    # rpm2cpio auto-cert-kit-9.0.1-2.xs9.noarch.rpm | cpio -ivd
 ```  
 
 &emsp;&emsp;&emsp;(4) In setup-scripts folder you can find three files as below screenshot shows.

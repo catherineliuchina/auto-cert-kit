@@ -36,6 +36,7 @@ import os.path
 import sys
 import math
 import traceback
+from xml.dom import minidom
 
 
 class FixedOffloadException(Exception):
@@ -546,6 +547,21 @@ class BondingTestClass(testbase.NetworkTestClass):
     required_config = ['device_config']
     num_ips_required = 2
 
+    def _cleanup_bonds(self, session):
+        """Clean up any existing bonds with FOR_CLEANUP tag before running the test"""
+        log.debug("Cleaning up existing bonds with FOR_CLEANUP tag before bond test...")
+        bonds = session.xenapi.Bond.get_all()
+        for bond in bonds:
+            try:
+                other_config = session.xenapi.Bond.get_other_config(bond)
+                if utils.FOR_CLEANUP in other_config:
+                    log.debug("Destroying bond with FOR_CLEANUP tag: %s" % bond)
+                    session.xenapi.Bond.destroy(bond)
+                else:
+                    log.debug("Skipping bond without FOR_CLEANUP tag: %s" % bond)
+            except Exception as e:
+                log.debug("Failed to check/destroy bond %s: %s" % (bond, str(e)))
+
     def _setup_network(self, session, mode):
         """Util function for creating a pool-wide network, 
             NIC bond of specified mode on each host"""
@@ -594,6 +610,9 @@ class BondingTestClass(testbase.NetworkTestClass):
             configuring the test VMs, and testing for an active 
             network connection while the NIC bond is degraded.
             Returns failure if any packet loss."""
+        # Clean up any existing bonds before running the test
+        self._cleanup_bonds(session)
+
         net_refs = self._setup_network(session, mode)
         vm1_ref, vm2_ref = self._setup_vms(session, net_refs)
 
@@ -1190,6 +1209,21 @@ class InterHostSRIOVTestClass(IperfTestClass):
             raise TestCaseError(
                 'Error: SR-IOV test failed. SR-IOV capability is not available')
 
+    def _update_test_run_vfs(self):
+        test_file = get_value(self.config, 'test_file')
+        test_class = get_value(self.config, 'test_class')
+        if not test_file or not test_class:
+            return
+        dom = minidom.parse(test_file)
+        dev_nodes = dom.getElementsByTagName('device')
+        for dev_node in dev_nodes:
+            if dev_node.getAttribute('udid') == str(test_class.parent.udid):
+                dev_node.setAttribute('vfs', str(self.vf_num))
+                fh = open(test_file, 'w')
+                fh.write(dom.toxml())
+                fh.close()
+                return
+
     def _enable_vf(self, session, tried=False):
         master = get_pool_master(session)
         device = self.config['device_config']['Kernel_name']
@@ -1219,6 +1253,7 @@ class InterHostSRIOVTestClass(IperfTestClass):
         if self.vf_num <= 0:
             raise TestCaseError(
                 'Error: SR-IOV test failed. No VF available after enabling')
+        self._update_test_run_vfs()
 
         net_ref = get_test_sriov_network(session, network_label)
 
